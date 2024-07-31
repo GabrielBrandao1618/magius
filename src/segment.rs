@@ -1,3 +1,4 @@
+#[derive(Copy, Clone)]
 pub struct BytesSegment {
     pub offset: usize,
     pub length: usize,
