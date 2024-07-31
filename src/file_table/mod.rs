@@ -46,5 +46,14 @@ mod tests {
         let found = dir.get_by_path(vec!["data.txt"]);
         assert_ne!(found, None);
         assert_eq!(found, Some(&FtItem::File(MagiusFile::default())));
+
+        let found = dir.get_by_path(vec!["items"]);
+        assert_eq!(found, None);
+
+        let found = dir.get_by_path(vec!["items", "data.txt"]);
+        assert_eq!(found, None);
+
+        let found = dir.get_by_path(vec!["data.txt", "sub.txt"]);
+        assert_eq!(found, None);
     }
 }
