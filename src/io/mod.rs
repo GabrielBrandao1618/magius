@@ -4,26 +4,17 @@ use super::segment::BytesSegment;
 
 pub struct MagiusFsIo<F: Read + Write + Seek> {
     pub file: F,
-    current_offset: usize,
 }
 
 impl<F: Read + Write + Seek> MagiusFsIo<F> {
-    pub fn new(mut f: F) -> Self {
-        let mut current_offset = 0;
-        if let Ok(data_length) = f.seek(SeekFrom::End(0)) {
-            current_offset = data_length as usize;
-        }
-        Self {
-            file: f,
-            current_offset,
-        }
+    pub fn new(f: F) -> Self {
+        Self { file: f }
     }
     pub fn alloc(&mut self, data: &[u8]) -> std::io::Result<BytesSegment> {
         let mut w = BufWriter::new(&mut self.file);
-        w.seek(SeekFrom::Start(self.current_offset as u64))?;
+        let current_offset = w.seek(SeekFrom::Current(0))?;
         let data_length = w.write(&data)?;
-        let bytes_segment = (self.current_offset, data_length).into();
-        self.current_offset += data_length;
+        let bytes_segment = (current_offset as usize, data_length).into();
         Ok(bytes_segment)
     }
     pub fn read_segment(&mut self, segment: BytesSegment) -> std::io::Result<Vec<u8>> {
