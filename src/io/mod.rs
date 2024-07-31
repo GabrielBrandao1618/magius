@@ -7,7 +7,8 @@ pub struct MagiusFsIo<F: Read + Write + Seek> {
 }
 
 impl<F: Read + Write + Seek> MagiusFsIo<F> {
-    pub fn new(f: F) -> Self {
+    pub fn new(mut f: F) -> Self {
+        let _ = f.seek(SeekFrom::End(0));
         Self { file: f }
     }
     pub fn alloc(&mut self, data: &[u8]) -> std::io::Result<BytesSegment> {
@@ -65,8 +66,11 @@ mod tests {
         assert_eq!(readed_bytes, a);
 
         let b = "foo".as_bytes();
-        let written_segment = magius_fs.alloc(b).unwrap();
-        let readed_bytes = magius_fs.read_segment(written_segment).unwrap();
+        let second_segment = magius_fs.alloc(b).unwrap();
+        let readed_bytes = magius_fs.read_segment(second_segment).unwrap();
         assert_eq!(readed_bytes, b);
+
+        let readed_bytes = magius_fs.read_segment(written_segment).unwrap();
+        assert_eq!(readed_bytes, a);
     }
 }
