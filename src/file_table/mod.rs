@@ -24,13 +24,12 @@ impl MagiusDirectory {
         if path.len() == 0 {
             return self.files.get(subpath);
         }
-        match self.files.get(subpath) {
-            Some(item) => match item {
-                FtItem::Dir(dir) => dir.get_by_path(path),
-                FtItem::File(_) => None,
-            },
-            None => None,
+        if let Some(item) = self.files.get(subpath) {
+            if let FtItem::Dir(dir) = item {
+                return dir.get_by_path(path);
+            }
         }
+        None
     }
     pub fn insert_in_path(&mut self, mut path: Vec<&str>, item: FtItem) {
         let subpath = path.remove(0);
