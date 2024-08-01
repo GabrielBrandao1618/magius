@@ -31,6 +31,18 @@ impl MagiusDirectory {
         }
         None
     }
+    pub fn get_mut_by_path(&mut self, mut path: Vec<&str>) -> Option<&mut FtItem> {
+        let subpath = path.remove(0);
+        if path.len() == 0 {
+            return self.files.get_mut(subpath);
+        }
+        if let Some(item) = self.files.get_mut(subpath) {
+            if let FtItem::Dir(dir) = item {
+                return dir.get_mut_by_path(path);
+            }
+        }
+        None
+    }
     pub fn insert_in_path(&mut self, mut path: Vec<&str>, item: FtItem) {
         let subpath = path.remove(0);
         if path.len() == 0 {
@@ -99,5 +111,16 @@ mod tests {
             dir.get_by_path(vec!["items", "data.txt"]),
             Some(&FtItem::File(MagiusFile::default()))
         );
+    }
+    #[test]
+    fn test_get_mut_file() {
+        let mut dir = MagiusDirectory::default();
+        dir.insert_in_path(vec!["items"], FtItem::Dir(MagiusDirectory::default()));
+        dir.insert_in_path(
+            vec!["items", "data.txt"],
+            FtItem::File(MagiusFile::default()),
+        );
+        let mut_file = dir.get_mut_by_path(vec!["items", "data.txt"]);
+        assert_eq!(mut_file, Some(&mut FtItem::File(MagiusFile::default())));
     }
 }
