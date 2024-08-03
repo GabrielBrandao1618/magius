@@ -1,6 +1,32 @@
-use std::collections::BTreeMap;
+use std::{
+    collections::BTreeMap,
+    io::{Read, Write},
+};
 
 use crate::segment::BytesSegment;
+
+pub struct FileTable<F: Read + Write> {
+    root_dir: MagiusDirectory,
+    file: F,
+}
+
+impl<F: Read + Write> FileTable<F> {
+    pub fn new(f: F) -> Self {
+        Self {
+            root_dir: MagiusDirectory::new(),
+            file: f,
+        }
+    }
+    pub fn insert_in_path(&mut self, path: Vec<&str>, item: FtItem) {
+        self.root_dir.insert_in_path(path, item);
+    }
+    pub fn get_by_path(&self, path: Vec<&str>) -> Option<&FtItem> {
+        self.root_dir.get_by_path(path)
+    }
+    pub fn get_mut_by_path(&mut self, path: Vec<&str>) -> Option<&mut FtItem> {
+        self.root_dir.get_mut_by_path(path)
+    }
+}
 
 #[derive(Default, Debug, PartialEq)]
 pub struct MagiusFile {
@@ -13,12 +39,17 @@ pub enum FtItem {
     File(MagiusFile),
 }
 
-#[derive(Default, Debug, PartialEq)]
+#[derive(Debug, PartialEq)]
 pub struct MagiusDirectory {
     pub files: BTreeMap<String, FtItem>,
 }
 
 impl MagiusDirectory {
+    pub fn new() -> Self {
+        Self {
+            files: BTreeMap::new(),
+        }
+    }
     pub fn get_by_path(&self, mut path: Vec<&str>) -> Option<&FtItem> {
         let subpath = path.remove(0);
         if path.len() == 0 {
@@ -63,7 +94,7 @@ mod tests {
 
     #[test]
     fn test_get_file() {
-        let mut dir = MagiusDirectory::default();
+        let mut dir = MagiusDirectory::new();
         dir.files
             .insert("data.txt".to_owned(), FtItem::File(MagiusFile::default()));
         let found = dir.get_by_path(vec!["data.txt"]);
@@ -82,8 +113,8 @@ mod tests {
 
     #[test]
     fn test_get_dir() {
-        let mut dir = MagiusDirectory::default();
-        let mut sub_dir = MagiusDirectory::default();
+        let mut dir = MagiusDirectory::new();
+        let mut sub_dir = MagiusDirectory::new();
         sub_dir
             .files
             .insert("data.txt".to_owned(), FtItem::File(MagiusFile::default()));
@@ -96,11 +127,11 @@ mod tests {
 
     #[test]
     fn test_insert_in_dir() {
-        let mut dir = MagiusDirectory::default();
-        dir.insert_in_path(vec!["items"], FtItem::Dir(MagiusDirectory::default()));
+        let mut dir = MagiusDirectory::new();
+        dir.insert_in_path(vec!["items"], FtItem::Dir(MagiusDirectory::new()));
         assert_eq!(
             dir.get_by_path(vec!["items"]),
-            Some(&FtItem::Dir(MagiusDirectory::default()))
+            Some(&FtItem::Dir(MagiusDirectory::new()))
         );
 
         dir.insert_in_path(
@@ -114,8 +145,8 @@ mod tests {
     }
     #[test]
     fn test_get_mut_file() {
-        let mut dir = MagiusDirectory::default();
-        dir.insert_in_path(vec!["items"], FtItem::Dir(MagiusDirectory::default()));
+        let mut dir = MagiusDirectory::new();
+        dir.insert_in_path(vec!["items"], FtItem::Dir(MagiusDirectory::new()));
         dir.insert_in_path(
             vec!["items", "data.txt"],
             FtItem::File(MagiusFile::default()),

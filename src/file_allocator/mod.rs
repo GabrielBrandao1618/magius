@@ -1,15 +1,15 @@
 use std::io::{Read, Seek, Write};
 
-use crate::file_table::{FtItem, MagiusDirectory, MagiusFile};
+use crate::file_table::{FileTable, FtItem, MagiusDirectory, MagiusFile};
 use crate::io::MagiusFsIo;
 
-pub struct Magius<F: Read + Write + Seek> {
+pub struct Magius<F: Read + Write + Seek, T: Read + Write> {
     fs_io: MagiusFsIo<F>,
-    file_table: MagiusDirectory,
+    file_table: FileTable<T>,
 }
 
-impl<F: Read + Write + Seek> Magius<F> {
-    pub fn new(fs_io: MagiusFsIo<F>, file_table: MagiusDirectory) -> Self {
+impl<F: Read + Write + Seek, T: Read + Write> Magius<F, T> {
+    pub fn new(fs_io: MagiusFsIo<F>, file_table: FileTable<T>) -> Self {
         Self { fs_io, file_table }
     }
     pub fn create_file(&mut self, path: Vec<&str>) {
@@ -18,7 +18,7 @@ impl<F: Read + Write + Seek> Magius<F> {
     }
     pub fn create_dir(&mut self, path: Vec<&str>) {
         self.file_table
-            .insert_in_path(path, FtItem::Dir(MagiusDirectory::default()));
+            .insert_in_path(path, FtItem::Dir(MagiusDirectory::new()));
     }
     pub fn write_file_by_path(&mut self, path: Vec<&str>, data: &[u8]) -> std::io::Result<()> {
         let written_segment = self.fs_io.alloc(data)?;
@@ -73,14 +73,14 @@ mod tests {
 
     use crate::{
         file_allocator::Magius,
-        file_table::{FtItem, MagiusDirectory},
+        file_table::{FileTable, FtItem},
         io::MagiusFsIo,
     };
 
     #[test]
     fn test_rw_file() {
         let f = Cursor::<Vec<u8>>::new(vec![]);
-        let file_table = MagiusDirectory::default();
+        let file_table = FileTable::new(Cursor::new(Vec::new()));
         let mut magius = Magius::new(MagiusFsIo::new(f), file_table);
         magius.create_dir(vec!["items"]);
         magius.create_file(vec!["items", "data.txt"]);
