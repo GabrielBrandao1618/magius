@@ -3,6 +3,8 @@ use std::{
     io::{Read, Write},
 };
 
+use serde::{Deserialize, Serialize};
+
 use crate::segment::BytesSegment;
 
 pub struct FileTable<F: Read + Write> {
@@ -11,11 +13,18 @@ pub struct FileTable<F: Read + Write> {
 }
 
 impl<F: Read + Write> FileTable<F> {
-    pub fn new(f: F) -> Self {
-        Self {
-            root_dir: MagiusDirectory::new(),
-            file: f,
+    pub fn new(mut f: F) -> Self {
+        let root_dir = Self::read_root_dir_file(&mut f).unwrap_or(MagiusDirectory::new());
+        Self { root_dir, file: f }
+    }
+    fn read_root_dir_file(f: &mut F) -> Option<MagiusDirectory> {
+        let mut dir_bytes = Vec::new();
+        let _ = f.read_to_end(&mut dir_bytes);
+        let decoding_result = bincode::deserialize::<MagiusDirectory>(&dir_bytes);
+        if let Ok(decoded) = decoding_result {
+            return Some(decoded);
         }
+        None
     }
     pub fn insert_in_path(&mut self, path: Vec<&str>, item: FtItem) {
         self.root_dir.insert_in_path(path, item);
@@ -28,18 +37,27 @@ impl<F: Read + Write> FileTable<F> {
     }
 }
 
-#[derive(Default, Debug, PartialEq)]
+impl<F: Read + Write> Drop for FileTable<F> {
+    fn drop(&mut self) {
+        let encoding_result = bincode::serialize(&self.root_dir);
+        if let Ok(encoded) = encoding_result {
+            let _ = self.file.write_all(&encoded);
+        }
+    }
+}
+
+#[derive(Default, Debug, PartialEq, Serialize, Deserialize)]
 pub struct MagiusFile {
     pub segments: Vec<BytesSegment>,
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Serialize, Deserialize)]
 pub enum FtItem {
     Dir(MagiusDirectory),
     File(MagiusFile),
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Serialize, Deserialize)]
 pub struct MagiusDirectory {
     pub files: BTreeMap<String, FtItem>,
 }

@@ -1,4 +1,6 @@
-#[derive(Copy, Clone, Debug, PartialEq)]
+use serde::{Deserialize, Serialize};
+
+#[derive(Copy, Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct BytesSegment {
     pub offset: usize,
     pub length: usize,

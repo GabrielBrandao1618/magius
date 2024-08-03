@@ -80,7 +80,8 @@ mod tests {
     #[test]
     fn test_rw_file() {
         let f = Cursor::<Vec<u8>>::new(vec![]);
-        let file_table = FileTable::new(Cursor::new(Vec::new()));
+        let mut table_file = Cursor::new(Vec::new());
+        let file_table = FileTable::new(&mut table_file);
         let mut magius = Magius::new(MagiusFsIo::new(f), file_table);
         magius.create_dir(vec!["items"]);
         magius.create_file(vec!["items", "data.txt"]);
