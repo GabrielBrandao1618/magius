@@ -3,12 +3,12 @@ use std::io::{Read, Seek, Write};
 use crate::file_table::{FileTable, FtItem, MagiusDirectory, MagiusFile};
 use crate::io::MagiusFsIo;
 
-pub struct Magius<'a, F: Read + Write + Seek> {
+pub struct FileAllocator<'a, F: Read + Write + Seek> {
     fs_io: MagiusFsIo<F>,
     file_table: FileTable<'a, F>,
 }
 
-impl<'a, F: Read + Write + Seek> Magius<'a, F> {
+impl<'a, F: Read + Write + Seek> FileAllocator<'a, F> {
     pub fn new(fs_io: MagiusFsIo<F>, file_table: FileTable<'a, F>) -> Self {
         Self { fs_io, file_table }
     }
@@ -70,7 +70,7 @@ mod tests {
     use std::io::Cursor;
 
     use crate::{
-        file_allocator::Magius,
+        file_allocator::FileAllocator,
         file_table::{FileTable, FtItem},
         io::MagiusFsIo,
     };
@@ -80,7 +80,7 @@ mod tests {
         let f = Cursor::<Vec<u8>>::new(vec![]);
         let mut table_file = Cursor::new(Vec::new());
         let file_table = FileTable::new(&mut table_file);
-        let mut magius = Magius::new(MagiusFsIo::new(f), file_table);
+        let mut magius = FileAllocator::new(MagiusFsIo::new(f), file_table);
         magius.create_dir(vec!["items"]);
         magius.create_file(vec!["items", "data.txt"]);
 
