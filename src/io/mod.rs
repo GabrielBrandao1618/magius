@@ -18,8 +18,8 @@ impl<F: Read + Write + Seek> MagiusFsIo<F> {
     pub fn alloc(&self, data: &[u8]) -> std::io::Result<BytesSegment> {
         let mut file = self.file.borrow_mut();
         let mut w = BufWriter::new(&mut *file);
-        let current_offset = w.seek(SeekFrom::Current(0))?;
-        let data_length = w.write(&data)?;
+        let current_offset = w.stream_position()?;
+        let data_length = w.write(data)?;
         let bytes_segment = (current_offset as usize, data_length).into();
         Ok(bytes_segment)
     }

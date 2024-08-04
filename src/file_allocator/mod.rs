@@ -18,7 +18,7 @@ impl<'a, F: Read + Write + Seek> Magius<'a, F> {
     }
     pub fn create_dir(&mut self, path: Vec<&str>) {
         self.file_table
-            .insert_in_path(path, FtItem::Dir(MagiusDirectory::new()));
+            .insert_in_path(path, FtItem::Dir(MagiusDirectory::default()));
     }
     pub fn write_file_by_path(&mut self, path: Vec<&str>, data: &[u8]) -> std::io::Result<()> {
         let written_segment = self.fs_io.alloc(data)?;
@@ -42,12 +42,10 @@ impl<'a, F: Read + Write + Seek> Magius<'a, F> {
         buf: &mut Vec<u8>,
     ) -> std::io::Result<()> {
         let found_item = self.get_file(path);
-        if let Some(item) = found_item {
-            if let FtItem::File(file) = item {
-                for file_segment in &file.segments {
-                    let readed = self.fs_io.read_segment(file_segment)?;
-                    buf.extend(readed);
-                }
+        if let Some(FtItem::File(file)) = found_item {
+            for file_segment in &file.segments {
+                let readed = self.fs_io.read_segment(file_segment)?;
+                buf.extend(readed);
             }
         }
         Ok(())
