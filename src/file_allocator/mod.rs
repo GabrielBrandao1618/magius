@@ -3,13 +3,13 @@ use std::io::{Read, Seek, Write};
 use crate::file_table::{FileTable, FtItem, MagiusDirectory, MagiusFile};
 use crate::io::MagiusFsIo;
 
-pub struct Magius<F: Read + Write + Seek, T: Read + Write> {
+pub struct Magius<'a, F: Read + Write + Seek> {
     fs_io: MagiusFsIo<F>,
-    file_table: FileTable<T>,
+    file_table: FileTable<'a, F>,
 }
 
-impl<F: Read + Write + Seek, T: Read + Write> Magius<F, T> {
-    pub fn new(fs_io: MagiusFsIo<F>, file_table: FileTable<T>) -> Self {
+impl<'a, F: Read + Write + Seek> Magius<'a, F> {
+    pub fn new(fs_io: MagiusFsIo<F>, file_table: FileTable<'a, F>) -> Self {
         Self { fs_io, file_table }
     }
     pub fn create_file(&mut self, path: Vec<&str>) {

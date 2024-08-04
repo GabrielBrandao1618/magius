@@ -1,30 +1,36 @@
 use std::{
     collections::BTreeMap,
-    io::{Read, Write},
+    io::{ErrorKind, Read, Seek, SeekFrom, Write},
 };
 
 use serde::{Deserialize, Serialize};
 
 use crate::segment::BytesSegment;
 
-pub struct FileTable<F: Read + Write> {
+pub struct FileTable<'a, F: Read + Write + Seek> {
     root_dir: MagiusDirectory,
-    file: F,
+    file: &'a mut F,
 }
 
-impl<F: Read + Write> FileTable<F> {
-    pub fn new(mut f: F) -> Self {
-        let root_dir = Self::read_root_dir_file(&mut f).unwrap_or(MagiusDirectory::new());
+impl<'a, F: Read + Write + Seek> FileTable<'a, F> {
+    pub fn new(f: &'a mut F) -> Self {
+        let root_dir = Self::read_root_dir_file(f).unwrap_or(MagiusDirectory::new());
         Self { root_dir, file: f }
     }
-    fn read_root_dir_file(f: &mut F) -> Option<MagiusDirectory> {
+    fn read_root_dir_file(f: &mut F) -> std::io::Result<MagiusDirectory> {
         let mut dir_bytes = Vec::new();
-        let _ = f.read_to_end(&mut dir_bytes);
-        let decoding_result = bincode::deserialize::<MagiusDirectory>(&dir_bytes);
-        if let Ok(decoded) = decoding_result {
-            return Some(decoded);
+        f.seek(SeekFrom::Start(0));
+        let bytes_read = f.read_to_end(&mut dir_bytes)?;
+        if bytes_read == 0 {
+            return Err(std::io::Error::new(ErrorKind::Other, "Could not read file"));
         }
-        None
+        match bincode::deserialize::<MagiusDirectory>(&dir_bytes) {
+            Ok(decoded) => Ok(decoded),
+            Err(err) => Err(std::io::Error::new(
+                ErrorKind::Other,
+                "Could not parse data",
+            )),
+        }
     }
     pub fn insert_in_path(&mut self, path: Vec<&str>, item: FtItem) {
         self.root_dir.insert_in_path(path, item);
@@ -37,7 +43,7 @@ impl<F: Read + Write> FileTable<F> {
     }
 }
 
-impl<F: Read + Write> Drop for FileTable<F> {
+impl<F: Read + Write + Seek> Drop for FileTable<'_, F> {
     fn drop(&mut self) {
         let encoding_result = bincode::serialize(&self.root_dir);
         if let Ok(encoded) = encoding_result {
@@ -108,6 +114,8 @@ impl MagiusDirectory {
 
 #[cfg(test)]
 mod tests {
+    use std::io::Cursor;
+
     use super::*;
 
     #[test]
@@ -171,5 +179,16 @@ mod tests {
         );
         let mut_file = dir.get_mut_by_path(vec!["items", "data.txt"]);
         assert_eq!(mut_file, Some(&mut FtItem::File(MagiusFile::default())));
+    }
+    #[test]
+    fn test_save_file_table() {
+        let mut ft_file = Cursor::new(Vec::new());
+        let mut file_table = FileTable::new(&mut ft_file);
+        file_table.insert_in_path(vec!["data"], FtItem::Dir(MagiusDirectory::new()));
+        drop(file_table);
+
+        let mut file_table = FileTable::new(&mut ft_file);
+        let found_item = file_table.get_by_path(vec!["data"]).unwrap();
+        assert_eq!(found_item, &FtItem::Dir(MagiusDirectory::new()));
     }
 }
