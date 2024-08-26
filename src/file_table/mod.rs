@@ -5,8 +5,6 @@ use std::{
 
 use serde::{Deserialize, Serialize};
 
-use crate::segment::BytesSegment;
-
 pub struct FileTable<'a, F: Read + Write + Seek> {
     root_dir: MagiusDirectory,
     file: &'a mut F,
@@ -54,7 +52,7 @@ impl<F: Read + Write + Seek> Drop for FileTable<'_, F> {
 
 #[derive(Default, Debug, PartialEq, Serialize, Deserialize)]
 pub struct MagiusFile {
-    pub segments: Vec<BytesSegment>,
+    pub blocks: Vec<u64>,
 }
 
 #[derive(Debug, PartialEq, Serialize, Deserialize)]
