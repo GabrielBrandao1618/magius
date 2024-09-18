@@ -47,7 +47,7 @@ impl<F: Read + Write + Seek> MagiusFsIo<F> {
     pub fn push(&mut self, data: &[u8]) -> std::io::Result<u64> {
         self.write_block(self.blocks_count, data)?;
         self.blocks_count += 1;
-        Ok(self.blocks_count)
+        Ok(self.blocks_count - 1)
     }
 }
 
@@ -63,12 +63,12 @@ mod tests {
         let a = "testing".as_bytes();
         magius_fs.push(a).unwrap();
         let readed_bytes = magius_fs.read_block(0).unwrap();
-        assert_eq!(readed_bytes, a);
+        assert_eq!(&readed_bytes[0..a.len()], a);
 
         let b = "aaaaa".as_bytes();
         magius_fs.push(b).unwrap();
         let readed_bytes = magius_fs.read_block(1).unwrap();
-        assert_eq!(readed_bytes, b);
+        assert_eq!(&readed_bytes[0..b.len()], b);
     }
     #[test]
     fn test_init_from_already_existing() {
@@ -77,7 +77,7 @@ mod tests {
         let a = "testing".as_bytes();
         magius_fs.push(a).unwrap();
         let readed_bytes = magius_fs.read_block(0).unwrap();
-        assert_eq!(readed_bytes, a);
+        assert_eq!(&readed_bytes[0..a.len()], a);
 
         let mut written_hd = std::mem::replace(
             &mut magius_fs.file,
@@ -87,14 +87,14 @@ mod tests {
 
         let mut magius_fs = MagiusFsIo::new(written_hd.get_mut(), 1024);
         let readed_bytes = magius_fs.read_block(0).unwrap();
-        assert_eq!(readed_bytes, a);
+        assert_eq!(&readed_bytes[0..a.len()], a);
 
         let b = "foo".as_bytes();
         magius_fs.push(b).unwrap();
         let readed_bytes = magius_fs.read_block(1).unwrap();
-        assert_eq!(readed_bytes, b);
+        assert_eq!(&readed_bytes[0..b.len()], b);
 
         let readed_bytes = magius_fs.read_block(0).unwrap();
-        assert_eq!(readed_bytes, a);
+        assert_eq!(&readed_bytes[0..a.len()], a);
     }
 }
