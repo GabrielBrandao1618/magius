@@ -114,7 +114,7 @@ mod tests {
     fn test_write_blocks() {
         let v_hd = Cursor::<Vec<u8>>::new(Vec::new());
         let mut magius_fs = MagiusFsIo::new(v_hd, 4);
-        let a = "abcdefgh".as_bytes();
+        let a = "abcdefghfff".as_bytes();
         magius_fs.push(a).unwrap();
         let block1 = magius_fs.read_block(0).unwrap();
         let block2 = magius_fs.read_block(1).unwrap();
