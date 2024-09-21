@@ -21,13 +21,13 @@ impl<'a, F: Read + Write + Seek> FileAllocator<'a, F> {
             .insert_in_path(path, FtItem::Dir(MagiusDirectory::default()));
     }
     pub fn write_file_by_path(&mut self, path: Vec<&str>, data: &[u8]) -> std::io::Result<()> {
-        let written_segment = self.fs_io.alloc(data)?;
+        let written_block = self.fs_io.push(data)?;
         let target_file = self.get_file_mut(path).ok_or(std::io::Error::new(
             std::io::ErrorKind::NotFound,
             "File not found",
         ))?;
         if let FtItem::File(file) = target_file {
-            file.segments.push(written_segment);
+            file.blocks.extend(written_block);
             Ok(())
         } else {
             Err(std::io::Error::new(
@@ -43,8 +43,8 @@ impl<'a, F: Read + Write + Seek> FileAllocator<'a, F> {
     ) -> std::io::Result<()> {
         let found_item = self.get_file(path);
         if let Some(FtItem::File(file)) = found_item {
-            for file_segment in &file.segments {
-                let readed = self.fs_io.read_segment(file_segment)?;
+            for block in &file.blocks {
+                let readed = self.fs_io.read_block(*block)?;
                 buf.extend(readed);
             }
         }
@@ -57,8 +57,8 @@ impl<'a, F: Read + Write + Seek> FileAllocator<'a, F> {
         self.file_table.get_mut_by_path(path)
     }
     pub fn read_entire_file(&self, file: &MagiusFile, buf: &mut Vec<u8>) -> std::io::Result<()> {
-        for segment in &file.segments {
-            let readed = self.fs_io.read_segment(segment)?;
+        for block in &file.blocks {
+            let readed = self.fs_io.read_block(*block)?;
             buf.extend(readed);
         }
         Ok(())
@@ -80,19 +80,21 @@ mod tests {
         let f = Cursor::<Vec<u8>>::new(vec![]);
         let mut table_file = Cursor::new(Vec::new());
         let file_table = FileTable::new(&mut table_file);
-        let mut magius = FileAllocator::new(MagiusFsIo::new(f), file_table);
+        let mut magius = FileAllocator::new(MagiusFsIo::new(f, 1024), file_table);
         magius.create_dir(vec!["items"]);
         magius.create_file(vec!["items", "data.txt"]);
 
+        let content = "content";
+
         magius
-            .write_file_by_path(vec!["items", "data.txt"], "content".as_bytes())
+            .write_file_by_path(vec!["items", "data.txt"], content.as_bytes())
             .unwrap();
         let found_file = magius.get_file(vec!["items", "data.txt"]).unwrap();
         if let FtItem::File(f) = found_file {
             let mut buf = Vec::new();
             magius.read_entire_file(f, &mut buf).unwrap();
             let parsed_readed = String::from_utf8(buf).unwrap();
-            assert_eq!(parsed_readed, "content".to_owned());
+            assert_eq!(parsed_readed[0..content.len()], content.to_owned());
         } else {
             assert!(false);
         }
