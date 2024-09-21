@@ -63,6 +63,9 @@ impl<'a, F: Read + Write + Seek> FileAllocator<'a, F> {
         }
         Ok(())
     }
+    pub fn delete_by_path(&mut self, path: Vec<&str>) {
+        self.file_table.delete_by_path(path);
+    }
 }
 
 #[cfg(test)]
@@ -98,5 +101,21 @@ mod tests {
         } else {
             assert!(false);
         }
+    }
+    #[test]
+    fn test_delete_file() {
+        let f = Cursor::<Vec<u8>>::new(vec![]);
+        let mut table_file = Cursor::new(Vec::new());
+        let file_table = FileTable::new(&mut table_file);
+        let mut file_allocator = FileAllocator::new(MagiusFsIo::new(f), file_table);
+        file_allocator.create_dir(vec!["data"]);
+        file_allocator.create_file(vec!["data", "a.txt"]);
+        file_allocator.create_file(vec!["data", "b.txt"]);
+        file_allocator.create_file(vec!["data", "c.txt"]);
+        file_allocator.create_file(vec!["data", "d.txt"]);
+
+        file_allocator.get_file(vec!["data", "c.txt"]).unwrap();
+        file_allocator.delete_by_path(vec!["data", "c.txt"]);
+        assert_eq!(file_allocator.get_file(vec!["data", "c.txt"]), None);
     }
 }

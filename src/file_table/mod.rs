@@ -39,6 +39,9 @@ impl<'a, F: Read + Write + Seek> FileTable<'a, F> {
     pub fn get_mut_by_path(&mut self, path: Vec<&str>) -> Option<&mut FtItem> {
         self.root_dir.get_mut_by_path(path)
     }
+    pub fn delete_by_path(&mut self, path: Vec<&str>) {
+        self.root_dir.delete_by_path(path);
+    }
 }
 
 impl<F: Read + Write + Seek> Drop for FileTable<'_, F> {
@@ -95,6 +98,15 @@ impl MagiusDirectory {
         }
         if let Some(FtItem::Dir(sub_dir)) = self.files.get_mut(subpath) {
             sub_dir.insert_in_path(path, item);
+        }
+    }
+    pub fn delete_by_path(&mut self, mut path: Vec<&str>) {
+        let subpath = path.remove(0);
+        if path.is_empty() {
+            self.files.remove(subpath);
+        }
+        if let Some(FtItem::Dir(dir)) = self.files.get_mut(subpath) {
+            dir.delete_by_path(path);
         }
     }
 }
@@ -177,5 +189,18 @@ mod tests {
         let file_table = FileTable::new(&mut ft_file);
         let found_item = file_table.get_by_path(vec!["data"]).unwrap();
         assert_eq!(found_item, &FtItem::Dir(MagiusDirectory::default()));
+    }
+    #[test]
+    fn test_remove_file() {
+        let mut dir = MagiusDirectory::default();
+        dir.insert_in_path(vec!["data"], FtItem::Dir(MagiusDirectory::default()));
+        dir.insert_in_path(vec!["data", "a.txt"], FtItem::File(MagiusFile::default()));
+        dir.insert_in_path(vec!["data", "b.txt"], FtItem::File(MagiusFile::default()));
+        dir.insert_in_path(vec!["data", "c.txt"], FtItem::File(MagiusFile::default()));
+        dir.insert_in_path(vec!["data", "d.txt"], FtItem::File(MagiusFile::default()));
+
+        dir.get_by_path(vec!["data", "b.txt"]).unwrap();
+        dir.delete_by_path(vec!["data", "b.txt"]);
+        assert_eq!(dir.get_by_path(vec!["data", "b.txt"]), None);
     }
 }
