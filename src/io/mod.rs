@@ -27,7 +27,7 @@ impl<F: Read + Write + Seek> MagiusFsIo<F> {
         let mut r = BufReader::new(&mut *file);
         r.seek(SeekFrom::Start(block * self.block_size as u64))?;
         r.read_exact(&mut buf)?;
-        Ok(buf)
+        Ok(buf.into_iter().take_while(|c| *c != 0).collect())
     }
     pub fn write_block(&self, block: u64, data: &[u8]) -> std::io::Result<()> {
         if data.len() > self.block_size {
@@ -44,10 +44,23 @@ impl<F: Read + Write + Seek> MagiusFsIo<F> {
         w.write_all(&vec![0; remaining_space])?;
         Ok(())
     }
-    pub fn push(&mut self, data: &[u8]) -> std::io::Result<u64> {
-        self.write_block(self.blocks_count, data)?;
-        self.blocks_count += 1;
-        Ok(self.blocks_count - 1)
+    fn write_blocks(&self, block: u64, data: &[u8]) -> std::io::Result<Vec<u64>> {
+        let mut written_blocks = vec![];
+        let data_len = data.len();
+        let needed_blocks = data_len.div_ceil(self.block_size);
+        for i in 0..needed_blocks {
+            let data_offset = self.block_size * i;
+            let data_end = data_len.min(self.block_size * (i + 1));
+            self.write_block(block + i as u64, &data[data_offset..data_end])?;
+            written_blocks.push(block + i as u64);
+        }
+
+        Ok(written_blocks)
+    }
+    pub fn push(&mut self, data: &[u8]) -> std::io::Result<Vec<u64>> {
+        let blocks = self.write_blocks(self.blocks_count, data)?;
+        self.blocks_count += blocks.len() as u64;
+        Ok(blocks)
     }
 }
 
@@ -96,5 +109,16 @@ mod tests {
 
         let readed_bytes = magius_fs.read_block(0).unwrap();
         assert_eq!(&readed_bytes[0..a.len()], a);
+    }
+    #[test]
+    fn test_write_blocks() {
+        let v_hd = Cursor::<Vec<u8>>::new(Vec::new());
+        let mut magius_fs = MagiusFsIo::new(v_hd, 4);
+        let a = "abcdefgh".as_bytes();
+        magius_fs.push(a).unwrap();
+        let block1 = magius_fs.read_block(0).unwrap();
+        let block2 = magius_fs.read_block(1).unwrap();
+        assert_eq!(block1, &a[0..4]);
+        assert_eq!(block2, &a[4..8]);
     }
 }

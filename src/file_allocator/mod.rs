@@ -27,7 +27,7 @@ impl<'a, F: Read + Write + Seek> FileAllocator<'a, F> {
             "File not found",
         ))?;
         if let FtItem::File(file) = target_file {
-            file.blocks.push(written_block);
+            file.blocks.extend(written_block);
             Ok(())
         } else {
             Err(std::io::Error::new(
